@@ -24,4 +24,3 @@ class ApiError extends Error{
 export { ApiError }
  
 
-Super(message5)
