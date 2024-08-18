@@ -36,4 +36,10 @@ app.use("/tawk", limiter);
 app.use(mongoSanitize());
 // app.use(xss())
 
+
+// routes
+import userRouter from "./routes/user.routes.js";
+
+app.use("/api/v1/users",userRouter)
+
 export { app };
