@@ -73,6 +73,10 @@ const userSchema = new Schema(
             type: String,
             required: true,
         },
+        profileCompleted: {
+            type: Boolean,
+            default: false, // Initially set to false
+        },
         teams: [
             {
                 type: Schema.Types.ObjectId,
@@ -99,8 +103,8 @@ const userSchema = new Schema(
 userSchema.plugin(mongooseAggregatePaginate);
 userSchema.pre("save", async function (next) {
     if (!this.isModified("password")) return next();
-    this.password = bcrypt.hash(this.password, 10);
-    next();
+    this.password = await bcrypt.hash(this.password,10);
+    next()
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {

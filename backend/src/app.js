@@ -4,6 +4,7 @@ import cors from "cors";
 import morgan from "morgan"; //http request logger middleware
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import { ApiError } from './utils/ApiError.js'; 
 import mongoSanitize from "express-mongo-sanitize";
 import xss from "xss";
 
@@ -22,6 +23,7 @@ app.use(express.static("public"));
 app.use(cookieParser());
 app.use(helmet());
 
+
 if (process.env.NODE_ENV === "development") {
     app.use(morgan("dev"));
 }
@@ -39,7 +41,24 @@ app.use(mongoSanitize());
 
 // routes
 import userRouter from "./routes/user.routes.js";
+import { ApiResponse } from "./utils/ApiResponse.js";
 
-app.use("/api/v1/users",userRouter)
+app.use("/api/v1/users",userRouter);
+
+app.use((err,req,res,next) => {
+    if (err instanceof ApiError) {
+        return res.status(err.statusCode).json(
+            new ApiResponse(err.statusCode,err.message,err.data|| null,err.success=false)
+        );
+    }
+    
+    // next();
+    // For unexpected errors
+    console.error(err); // Log the error for debugging
+    return res.status(500).json({
+        message: "An unexpected error occurred. Please try again later.",
+        success: false,
+    });
+});
 
 export { app };

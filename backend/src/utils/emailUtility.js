@@ -19,7 +19,7 @@ const sendEmail = async ( to, subject, html ) =>{
 
     try {
         await transporter.sendMail(mailOptions);
-        console.log(`Email sent successfully to ${to}`);
+        // console.log(`Email sent successfully to ${to}`);
     } catch (error) {
         console.log(`Error while sending email to ${to} :`,error)
         throw new ApiError(500,"Email sending failed")
