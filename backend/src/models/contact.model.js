@@ -1,3 +1,6 @@
+import { Schema } from "mongoose";
+import mongoose from "mongoose";
+
 const contactSchema = new Schema(
     {
         portfolio: {

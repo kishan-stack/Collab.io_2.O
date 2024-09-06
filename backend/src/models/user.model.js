@@ -85,10 +85,8 @@ const userSchema = new Schema(
         ],
         skills: [
             {
-                name: {
-                    type: String,
-                    required: [true, "Atleast one skill is required!"],
-                },
+                type: Schema.Types.ObjectId,
+                ref: "Skill",
             },
         ],
         refreshToken: {

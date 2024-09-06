@@ -4,9 +4,9 @@ import { ApiResponse } from "../utils/ApiResponse.js"
 import { ApiError } from "../utils/ApiError.js"
 import { sendEmail } from "../utils/emailUtility.js";
 import crypto from "crypto"
-
-
-
+import { Skill } from "../models/skill.model.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import {Contact} from "../models/contact.model.js" 
 const generateAccessAndRefreshToken = async(userId)=>{
     try {
         const user = await User.findById(userId)
@@ -14,7 +14,7 @@ const generateAccessAndRefreshToken = async(userId)=>{
         const refreshToken = await user.generateRefreshToken();
         
         user.refreshToken = refreshToken;
-        await user.save({ validateBeforeSave: true});
+        await user.save({ validateBeforeSave: false});
 
         return {accessToken,refreshToken}
 
@@ -232,34 +232,64 @@ const logoutUser = asyncHandler(async(req,res)=>{
 const saveAdditionalDetails = asyncHandler(async (req,res)=>{
     const userId = req.user.id; // Get the user ID from the authenticated user
     
-    const { description,  portfolio, githubProfile, contactNumber ,skills } = req.body;
-    // if (!skills || !Array.isArray(skills) || skills.length === 0) {
-    //     throw new ApiError(400, "Students are required to have atleast one skill, may be start with HTML !!");
-    // }
+    const { description, portfolio, githubProfile, contactNumber, skills } = req.body;
+    if (!skills || !Array.isArray(skills) || skills.length === 0) {
+        throw new ApiError(400, "Students are required to have at least one skill, maybe start with HTML!!");
+    }
     
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPathLocalPath = req.files?.coverImage[0]?.path;
-    console.log(avatarLocalPath);
-    console.log(coverImageLocalPathLocalPath);
-    // console.log(userId)
-    // console.log("description = ",description);
-    // console.log("portfolio = ",portfolio);
-    // console.log("githubProfile = ",githubProfile);
-    // console.log("contactNumber = ",contactNumber);
-    console.log("skills = ",skills);
-    // const avatarLocalPath = req.files?.avatar[0]?.path;
-    // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    if (!avatarLocalPath) {
+        throw new ApiError(400, "Avatar file is required");
+    }
 
-    
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    if (!avatar) {
+        throw new ApiError(500, "Error while uploading avatar, try again later");
+    }
+    if (!coverImage) {
+        throw new ApiError(500, "Error while uploading cover image, try again later");
+    }
 
-    // const contactDetails = {
-    //     contactNumber: contactNumber,
-    //     portfolio: portfolio,
-    //     githubProfile: githubProfile,
-    // }
-    // return res.status(200)
-    // .json(new ApiResponse(200,contactDetails,"Contact details saved successfully"))
+    // Check for existing skills or create new ones
+    const formattedSkills = await Promise.all(
+        skills.map(async (skillName) => {
+            let skill = await Skill.findOne({ name: skillName });
+            if (!skill) {
+                skill = await Skill.create({ name: skillName });
+            }
+            return skill._id; // Return the ObjectId of the skill
+        })
+    );
 
+    const contactDetails = {
+        contactNumber: contactNumber,
+        portfolio: portfolio,
+        githubProfile: githubProfile,
+    };
+
+    // Create a new Contact document
+    const contactDetailsToBeSaved = await Contact.create(contactDetails);
+
+    // Update the User document
+    const additionalDetailsUpdate = await User.findByIdAndUpdate(userId, {
+        $set: {
+            description: description,
+            avatar: avatar.secure_url,
+            coverImage: coverImage.secure_url,
+            contactDetails: contactDetailsToBeSaved._id,
+            skills: formattedSkills, // Store the ObjectIds of skills
+            profileCompleted: true,
+        }
+    }, { new: true }).select("-password -refreshToken");
+
+    if (!additionalDetailsUpdate) {
+        throw new ApiError(500, "Error while updating User details, try again later");
+    }
+
+    return res.status(200)
+        .json(new ApiResponse(200, additionalDetailsUpdate, "Contact details saved successfully"));
 })
 
 
@@ -270,6 +300,15 @@ const testingSaveProfile = asyncHandler(async(req,res)=>{
     )
 })
 
+const getUserDetails = asyncHandler(async (req, res) => {
+    const userId = req.user._id;
+    const user = await User.findById(userId).select("-password -refreshToken");
+    if (!user) {
+        throw new ApiError(404, "User not found");
+    }
+    return res.status(200)
+    .json(new ApiResponse(200, user, "User details fetched successfully"));
+})
 
 export {
     registerUser, 
@@ -277,5 +316,6 @@ export {
     loginUser,
     logoutUser,
     saveAdditionalDetails,
-    testingSaveProfile
+    testingSaveProfile,
+    getUserDetails,
 } 
