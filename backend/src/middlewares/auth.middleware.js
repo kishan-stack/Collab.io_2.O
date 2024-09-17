@@ -2,7 +2,6 @@ import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken"
 import { User } from "../models/user.model.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
 
 
 export const verifyJWT = asyncHandler(async(req,res,next)=>{
@@ -18,6 +17,11 @@ export const verifyJWT = asyncHandler(async(req,res,next)=>{
             throw new ApiError(400,"Invalid Access Token")
         }
         
+        if (user.changedPasswordAfter(decodedUser.iat)) {
+           throw new ApiError(401,"User recently changed password! Please log in again.")
+        }
+
+
         req.user = user;
         next()
     } catch (error) {

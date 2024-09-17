@@ -2,6 +2,9 @@ import mongoose, { Schema } from "mongoose";
 import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import { stringify } from "querystring";
+
 
 const userSchema = new Schema(
     {
@@ -35,6 +38,9 @@ const userSchema = new Schema(
             type: String,
             required: [true, "Password is required !"],
         },
+        passwordConfirm: {
+            type: String,
+        },
         passwordChangedAt: {
             type: Date,
         },
@@ -51,7 +57,7 @@ const userSchema = new Schema(
         verificationToken: {
             type: String,
         },
-        verificationExpires: {
+        verificationExpiry: {
             type: Date,
         },
         fullName: {
@@ -61,9 +67,33 @@ const userSchema = new Schema(
         description: {
             type: String,
         },
-        contactDetails: {
-            type: Schema.Types.ObjectId,
-            ref: "Contact",
+        portfolio: {
+            type: String,
+        },
+        githubProfile: {
+            type: String,
+            
+            validate: {
+                validator: function (v) {
+                    return v === "" || /^(https?:\/\/)?(www\.)?github\.com\/[a-zA-Z0-9_-]+$/.test(
+                        v
+                    ); // GitHub URL validation
+                },
+                message: (props) =>
+                    `${props.value} is not a valid GitHub profile URL!`,
+            },
+            default:""
+        },
+        contactNumber: {
+            type: Number,
+            validate: {
+                validator: function (v) {
+                    return v === null ||/^\d{10}$/.test(v); // Example for a 10-digit number
+                },
+                message: (props) =>
+                    `${props.value} is not a valid contact number!`,
+            },
+            default:null
         },
         avatar: {
             type: String, //cloudinary
@@ -85,13 +115,16 @@ const userSchema = new Schema(
         ],
         skills: [
             {
-                type: Schema.Types.ObjectId,
-                ref: "Skill",
+                type: String
             },
         ],
         refreshToken: {
             type: String,
         },
+        socket_id: {
+            type: String,
+        },
+
     },
     {
         timestamps: true,
@@ -101,7 +134,7 @@ const userSchema = new Schema(
 userSchema.plugin(mongooseAggregatePaginate);
 userSchema.pre("save", async function (next) {
     if (!this.isModified("password")) return next();
-    this.password = await bcrypt.hash(this.password,10);
+    this.password = await bcrypt.hash(this.password, 10);
     next()
 });
 
@@ -137,4 +170,23 @@ userSchema.methods.generateRefreshToken = async function () {
     )
 };
 
+userSchema.methods.changedPasswordAfter = function (JWTTimeStamp) {
+    if (this.passwordChangedAt) {
+      const changedTimeStamp = parseInt(
+        this.passwordChangedAt.getTime() / 1000,
+        10
+      );
+      return JWTTimeStamp < changedTimeStamp;
+    }
+  
+    // FALSE MEANS NOT CHANGED
+    return false;
+};
+
+userSchema.methods.generatePasswordResetTokenForSendingUserEmail = async function () {
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    this.passwordResetToken = crypto.createHash("sha256").update(resetToken).digest("hex")
+    return resetToken;
+
+}
 export const User = mongoose.model("User", userSchema);

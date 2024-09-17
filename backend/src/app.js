@@ -1,4 +1,4 @@
-import express, { urlencoded } from "express";
+import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import morgan from "morgan"; //http request logger middleware
@@ -46,6 +46,7 @@ import { ApiResponse } from "./utils/ApiResponse.js";
 app.use("/api/v1/users",userRouter);
 
 app.use((err,req,res,next) => {
+    console.log(err);
     if (err instanceof ApiError) {
         return res.status(err.statusCode).json(
             new ApiResponse(err.statusCode,err.message,err.data|| null,err.success=false)
