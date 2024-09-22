@@ -38,9 +38,6 @@ const userSchema = new Schema(
             type: String,
             required: [true, "Password is required !"],
         },
-        passwordConfirm: {
-            type: String,
-        },
         passwordChangedAt: {
             type: Date,
         },
@@ -186,7 +183,7 @@ userSchema.methods.changedPasswordAfter = function (JWTTimeStamp) {
 userSchema.methods.generatePasswordResetTokenForSendingUserEmail = async function () {
     const resetToken = crypto.randomBytes(32).toString("hex");
     this.passwordResetToken = crypto.createHash("sha256").update(resetToken).digest("hex")
+    console.log("hashed token in database",this.passwordResetToken);
     return resetToken;
-
 }
 export const User = mongoose.model("User", userSchema);
