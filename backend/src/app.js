@@ -42,8 +42,11 @@ app.use(mongoSanitize());
 // routes
 import userRouter from "./routes/user.routes.js";
 import { ApiResponse } from "./utils/ApiResponse.js";
-
+import internshipRouter from "./routes/internship.routes.js"
+import hackathonRouter from "./routes/hackathon.routes.js"
 app.use("/api/v1/users",userRouter);
+app.use("/api/v1/internships",internshipRouter);
+app.use("/api/v1/hackathons",hackathonRouter);
 
 app.use((err,req,res,next) => {
     console.log(err);

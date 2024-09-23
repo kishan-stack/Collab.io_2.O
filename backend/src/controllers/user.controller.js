@@ -1,4 +1,3 @@
-import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js"
@@ -7,7 +6,6 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { generateAndSendVerificationEmail } from "../utils/generateVerificationTokenAndSendEmail.js";
 import { sendEmail } from "../utils/emailUtility.js";
 import crypto from "crypto"
-import bcrypt from "bcrypt"
 const generateAccessAndRefreshToken = async (userId) => {
     try {
         const user = await User.findById(userId)
