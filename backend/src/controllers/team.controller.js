@@ -58,7 +58,10 @@ const getTeams = asyncHandler(async(req,res)=>{
                     $map: { 
                         input: '$memberDetails', 
                         as: 'member', 
-                        in: '$$member.username' // Extract usernames for members
+                        in: {
+                            _id:'$$member._id',
+                            username:'$$member.username',
+                        } // Extract usernames for members
                     } 
                 }
             }
@@ -108,7 +111,10 @@ const getTeam = asyncHandler(async (req, res) => {
                     $map: { 
                         input: '$memberDetails', 
                         as: 'member', 
-                        in: '$$member.username' 
+                        in: {
+                            _id:'$$member._id',
+                            username:'$$member.username',
+                        }
                     } 
                 }
             }
@@ -138,10 +144,9 @@ const updateTeam = asyncHandler(async(req,res)=>{
     if (!updatedTeam) {
         throw new ApiError(404, "Team not found or you are not authorized to access it!");
     }
-    console.log(updatedTeam);
-    return res.status(200).json(new ApiResponse(200, {}, "Successfully deleted team!"));
+    // console.log(updatedTeam);
+    return res.status(200).json(new ApiResponse(200, {}, "Successfully updated team!"));
 })
-
 const deleteTeam = asyncHandler(async(req,res)=>{
     const { teamId } = req.params; // Assuming team ID is passed as a URL parameter
     const userId = req.user._id; // Assuming you have the user ID available in req.user._id
@@ -152,8 +157,76 @@ const deleteTeam = asyncHandler(async(req,res)=>{
     if (!team || team.length === 0) {
         throw new ApiError(404, "Team not found or you are not authorized to access it!");
     }
-    console.log(team);
+    // console.log(team);
     return res.status(200).json(new ApiResponse(200, team[0], "Successfully deleted team!"));
 })
 
-export { createTeam , getTeam,getTeams,updateTeam,deleteTeam}
+const addMemberToTeam = asyncHandler(async(req,res)=>{
+    const { teamId } = req.params;
+    const userId = req.user._id;
+    if (!teamId) {
+        throw new ApiError(400,"Team id is required")
+    }
+
+    const team = await Team.findByIdAndUpdate(
+        teamId,
+        {
+            $addToSet:{
+                members: userId,
+            }
+        },{
+            new:true
+        }
+    )
+
+    if (!team) {
+        throw new ApiError(500,"error while adding member to team ! try again later ")
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200,team,"User added successfully")
+    )
+})
+
+const removeMember = asyncHandler(async (req, res) => {
+    const { teamId } = req.params; // Assuming team ID is passed as a URL parameter
+    const userId = req.user._id; // Assuming you have the user ID available in req.user._id
+    // Find the team by ID
+    const { memberId } = req.body;
+    const team = await Team.findById(teamId);
+    
+    // Check if the team exists
+    if (!team) {
+        throw new ApiError(404, "Team not found!");
+    }
+
+    // Check if the user is the leader of the team
+    if (team.leader.toString() !== userId.toString()) {
+        throw new ApiError(403, "You are not authorized to remove members from this team!");
+    }
+    if (team.leader.toString() === memberId.toString()) {
+        // If the leader is removed, delete the team
+        await Team.findByIdAndDelete(teamId);
+        return res.status(200).json(new ApiResponse(200, null, "Leader removed; team has been deleted!"));
+    }
+
+
+    // Remove the user from the team's members array
+    const updatedTeam = await Team.findByIdAndUpdate(
+        teamId,
+        { $pull: { members: memberId } }, // Removes memberId from members; assuming memberId is sent in request body
+        { new: true, runValidators: true } // Return the updated document and run validators
+    );
+
+    // Check if the member was removed successfully
+    if (!updatedTeam) {
+        throw new ApiError(404, "Team not found!");
+    }
+
+    // Check if the leader was removed
+    
+
+    return res.status(200).json(new ApiResponse(200, updatedTeam, "Member removed successfully!"));
+});
+
+export { createTeam , getTeam,getTeams,updateTeam,deleteTeam, addMemberToTeam, removeMember}
